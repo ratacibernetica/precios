@@ -1,26 +1,47 @@
 import urllib, urllib2, cookielib, HTMLParser
 import BeautifulSoup
 
-# #Class used to parse HTML to be scraped.
-# class MyParser(HTMLParser.HTMLParser):
-	# def __init__(self):
-		# HTMLParser.HTMLParser.__init__(self)
-		# self.data_type = ""
-	# def handle_data(self, data):
-		# if not self.data_type:
-			# if data.lower() == "point balance":
-				# self.data_type = "balance"
-			# elif data.lower() == "points available to redeem":
-				# self.data_type = "points available to redeem"
-			# elif data.lower() == "pending points":
-				# self.data_type = "pending points"
-		# else:
-			# print "%s: %s" % (self.data_type, data)
-			# self.data_type = ""
-
 usuario = "passatempo"
 password = "bleach01"
 filename = "lista.html"
+
+#Funcion para quitar el codigo HTML de las lineas
+def stripHTMLTags (html):
+  """
+    Strip HTML tags from any string and transfrom special entities
+  """
+  import re
+  text = html
+ 
+  # apply rules in given order!
+  rules = [
+    { r'>\s+' : u'>'},                  # remove spaces after a tag opens or closes
+    { r'\s+' : u' '},                   # replace consecutive spaces
+    { r'\s*<br\s*/?>\s*' : u'\n'},      # newline after a <br>
+    #{ r'</(div)\s*>\s*' : u'\n'},       # newline after </p> and </div> and <h1/>...
+    #{ r'</(p|h\d)\s*>\s*' : u'\n\n'},   # newline after </p> and </div> and <h1/>...
+    { r'<head>.*<\s*(/head|body)[^>]*>' : u'' },     # remove <head> to </head>
+    { r'<a\s+href="([^"]+)"[^>]*>.*</a>' : u'' },  # show links instead of texts
+    { r'[ \t]*<[^<]*?/?>' : u'' },            # remove remaining tags
+    { r'^\s+' : u'' }                   # remove spaces at the beginning
+  ]
+ 
+  for rule in rules:
+    for (k,v) in rule.items():
+      regex = re.compile (k)
+      text  = regex.sub (v, text)
+ 
+  # replace special strings
+  special = {
+    '&nbsp;' : ' ', '&amp;' : '&', '&quot;' : '"',
+    '&lt;'   : '<', '&gt;'  : '>'
+  }
+ 
+  for (k,v) in special.items():
+    text = text.replace (k, v)
+ 
+  return text
+
 
 #cookie storage
 cj = cookielib.LWPCookieJar()
@@ -46,92 +67,55 @@ data = urllib.urlencode({"entrar": "+Entrar", "fUsuario": usuario, "fContrasenia
 request = urllib2.Request("https://www.grupocva.com/me_bpm/logincontrol.php", data)
 f = urllib2.urlopen(request)
 
-#Read the page.
-# html = f.read()
-# print html
-
 data = urllib.urlencode({"fGiraRegistro": "", "fUsuarioNew": usuario, "fContraseniaNew" : password, "fmtipoNew":"contacto"})
 request = urllib2.Request("https://www.grupocva.com/me_bpm/ControlInicioSesion.php", data)
 f = urllib2.urlopen(request)
 
-#Read the page.
-# html = f.read()
-# print html
 request = urllib2.Request("http://www.grupocva.com/me_bpm/welcome/welcome.php",None)
 f = urllib2.urlopen(request)
 html = f.readlines()
 for item in html: 
 	if "ISAAC" in item: 
+		item = stripHTMLTags(item)
 		print item
 
-
+print "Descargando documento, espere por favor"
 #Leer catalogo de productos con existencia en Puebla
 data = urllib.urlencode({"fClave": "", "fCodFab": "", "fLibre" : "", "fMarca":"%", "fGrupo":"%", "fOrden":"2","fDisp":"1", "Submit2":"Generar"})
 request = urllib2.Request("http://www.grupocva.com/me_bpm/Cotizaciones/CotizaListaPrecio.php", data)
 f = urllib2.urlopen(request)
-html = f.read()
+html = f.readlines()
 
-# for item in html: 
-	# if "fClave" in item: 
-		# print item
+#Buscamos el numero de productos encontrados (i) para ir iterando entre las "fPartidas"
+
+print "Leyendo cantidad de archivos..."
+i=0
+for item in html: 
+	if "registros" in item: 
+		item2 = stripHTMLTags(item)
+		item2 = item2[33:]
+		i=int(item2)
+		print "Numero de productos encontrados :"+str(i)
 		
-# FILE = open(filename,"w")
-# FILE.writelines(html)
-# FILE.close()
+		
+print "Iterando en fPartidas..."
+#Iteramos en todos los productos para obterner su informacion
+s='id="fPartida'
+j=0
+for item in html:
+	if j<i:
+		if s+str(j)+'"' in item: 
+			print item
+			j = j+1
 
+#Guardar Archivo
+"""
+print "Guardando a archivo " + filename	+ "..."	
+FILE = open(filename,"w")
+FILE.writelines(html)
+FILE.close()
+print "OK"
+"""
 f.close()
 
 
-#Parse the html here (html contains the page markup). 
-# parser = MyParser()
-# parser.feed(html)
-
-# #encode the login data. This will vary from site to site.
-# #View the sites source code
-# #Example###############################################
-# #<form id='loginform' method='post' action='index.php'>
-# #<div style="text-align: center;">
-# #Username<br />
-# #<input type='text' name='user_name' class='textbox' style='width:100px' /><br />
-# #Password<br />
-# #<input type='password' name='user_pass' class='textbox' style='width:100px' /><br />
-# #<input type='checkbox' name='remember_me' value='y' />Remember Me<br /><br />
-# #<input type='submit' name='login' value='Login' class='button' /><br />
-# # login_data = urllib.urlencode({'fUsuario' : 'passatempo',
-                               # # 'fContrasenia' : 'bleach01',
-                               # # 'entrar' : 'Entrar'
-                               # # })
-# # resp = opener.open('http://www.grupocva.com/mkt/apoyo/web12/index.php', login_data)
-# #you are now logged in and can access "members only" content.
-# #when your all done be sure to close it
-
-# #mypath = "http://www.grupocva.com/me_bpm/Cotizaciones/CotizaListaPrecio.php" 
-# # mylines = resp.readlines();
-# # for item in mylines: 
-	# # print item
-# # resp.close()
-
-# import cookielib
-# import urllib
-# import urllib2
-
-# url = 'www.grupocva.com/mkt/apoyo/web12/index.php'
-# values = {'fUsuario' : 'passatempo',
-          # 'fContrasenia' : 'bleach01',
-          # 'password-password' : 'mypassword' 
-		  # 'fmtipo
-		  # }
-
-# data = urllib.urlencode(values)
-# cookies = cookielib.CookieJar()
-
-# opener = urllib2.build_opener(
-    # urllib2.HTTPRedirectHandler(),
-    # urllib2.HTTPHandler(debuglevel=0),
-    # urllib2.HTTPSHandler(debuglevel=0),
-    # urllib2.HTTPCookieProcessor(cookies))
-
-# response = opener.open(url, data)
-# the_page = response.read()
-# http_headers = response.info()
-# # The login cookies should be contained in the cookies variable
