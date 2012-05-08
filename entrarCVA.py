@@ -1,9 +1,18 @@
-import urllib, urllib2, cookielib, HTMLParser
-import BeautifulSoup
+import urllib, urllib2, cookielib
 
 usuario = "passatempo"
 password = "bleach01"
 filename = "lista.html"
+archivo = "lista.txt"
+contenido = ""
+
+#Descargar imagenes
+
+def dImg(idImg,url):
+	
+	img = urllib.URLopener()
+	img.retrieve(url,'imagenes/'+idImg+".jpg")
+	print "imagen guardada"
 
 #Funcion para quitar el codigo HTML de las lineas
 def stripHTMLTags (html):
@@ -102,20 +111,76 @@ print "Iterando en fPartidas..."
 #Iteramos en todos los productos para obterner su informacion
 s='id="fPartida'
 j=0
+contenido=""
 for item in html:
-	if j<i:
-		if s+str(j)+'"' in item: 
-			print item
-			j = j+1
+	if j<10:
+		if s+str(j)+'"' in item:
+			contador = 1
+			#con esto lee la siguiente linea HTML
+			itemb = html[html.index(item)+contador]
+			#Saca el texto entre los TAGS 
+			codigo = stripHTMLTags(itemb)
+			
+			#El contador es el offset de lectura
+			contador = 2
+			itemb = html[html.index(item)+contador]
+			nombre = stripHTMLTags(itemb)
+			
+			contador = 5
+			itemb = html[html.index(item)+contador]
+			marca = stripHTMLTags(itemb)
+			
 
-#Guardar Archivo
-"""
-print "Guardando a archivo " + filename	+ "..."	
-FILE = open(filename,"w")
-FILE.writelines(html)
+			while (itemb.find('<a href="'+"javascript:void(window.open('http://www.grupocva.com/me_bpm/detalle_articulo/me_articulo.php?fProdId=") < 0):
+				contador += 1
+				itemb = html[html.index(item)+contador]
+			nombre2 = stripHTMLTags(itemb)
+			
+			
+			
+			while (itemb.find('id="fPrecioLista"') < 0):
+				contador += 1
+				itemb = html[html.index(item)+contador]
+			precio = stripHTMLTags(itemb)
+			
+			itemb = html[html.index(item)+contador]
+			while (itemb.find('id="fExistencia"') < 0):
+				contador += 1
+				itemb = html[html.index(item)+contador]
+			itemb = itemb[72:]
+			cantidad = itemb[:-6]
+			
+			itemb = html[html.index(item)+contador]
+			
+			while (itemb.find('id="ProdID"') < 0):
+				contador += 1
+				itemb = html[html.index(item)+contador]
+			itemb = itemb[63:]
+			productId = itemb[:-6]
+			
+			
+			
+			
+			imagenUrl = "http://www.grupocva.com/me_bpm/detalle_articulo/imagen_art.php?fProd="+productId
+			dImg(productId,imagenUrl)
+			
+			contenido += codigo+','+nombre+','+nombre2+','+marca+','+precio+','+productId+','+cantidad+','+productId+'\n'
+			
+			
+			j += 1
+					
+contenido += "Fin del archivo"
+			
+			
+			
+			
+
+
+print "Guardando a archivo " + archivo	+ "..."	
+FILE = open(archivo,"w")
+FILE.writelines(contenido)
 FILE.close()
 print "OK"
-"""
 f.close()
 
 
